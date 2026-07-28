@@ -1,0 +1,11 @@
+# Nixpacks 配置 - Railway.app 自动检测
+# 这个文件帮助 Railway 正确识别 Python 项目
+
+# 运行时版本
+python_version = "3.9"
+
+# 构建命令
+build_command = "pip install -r requirements.txt"
+
+# 启动命令
+start_command = "python serve.py"
