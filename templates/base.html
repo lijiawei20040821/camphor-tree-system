@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            /* 生态科技配色方案 */
+            --primary-bg: #2c3e50;       /* 深色背景 */
+            --sidebar-bg: linear-gradient(180deg, #1a252f 0%, #2c3e50 100%);
+            --active-item: #27ae60;      /* 生态绿 - 激活状态 */
+            --hover-item: rgba(255, 255, 255, 0.1);
+            --main-bg: #f5f7fa;          /* 内容区域浅灰背景 */
+            --text-color: #2c3e50;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--main-bg);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        /* --- 顶部导航栏 --- */
+        .navbar-custom {
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 0.8rem 1.5rem;
+            z-index: 1030;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-bg) !important;
+            font-size: 1.25rem;
+            letter-spacing: 0.5px;
+        }
+
+        .navbar-brand i {
+            color: var(--active-item);
+        }
+
+        /* --- 侧边栏 --- */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 48px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background: var(--sidebar-bg);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 48px);
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .sidebar .nav-link {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 12px 25px;
+            margin: 4px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar .nav-link i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+            transition: transform 0.3s;
+        }
+
+        .sidebar .nav-link:hover {
+            color: #fff;
+            background-color: var(--hover-item);
+            transform: translateX(5px);
+        }
+
+        .sidebar .nav-link.active {
+            color: #fff;
+            background-color: var(--active-item);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .sidebar .nav-link:hover i {
+            transform: scale(1.1);
+        }
+
+        /* --- 主内容区域 --- */
+        main {
+            padding-top: 20px;
+            min-height: 100vh;
+        }
+
+        /* 卡片通用样式优化 - 供子页面继承 */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 20px;
+            background: #fff;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 1.25rem 1.5rem;
+            font-weight: 600;
+            color: var(--primary-bg);
+        }
+
+        /* 消息提示框优化 */
+        .alert {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 767.98px) {
+            .sidebar {
+                top: 5rem;
+            }
+        }
+    </style>
+
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler me-2 border-0" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fas fa-bars text-dark"></i>
+            </button>
+
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-tree me-2"></i>
+                融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <i class="fas fa-ellipsis-v text-dark"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <div class="navbar-nav ms-auto align-items-center">
+                    <a class="nav-link text-secondary me-3 position-relative" href="#">
+                        <i class="fas fa-bell"></i>
+                        <span class="position-absolute top-1 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                            <span class="visually-hidden">New alerts</span>
+                        </span>
+                    </a>
+
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-dark d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                <i class="fas fa-user text-primary"></i>
+                            </div>
+                            {% if current_user.is_authenticated %}
+                                <span class="fw-bold">{{ current_user.username }}</span>
+                            {% else %}
+                                <span>游客</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="navbarDropdown">
+                            {% if current_user.is_authenticated %}
+                                <li><h6 class="dropdown-header">账户管理</h6></li>
+                                <li><a class="dropdown-item" href="{{ url_for('user_profile') }}"><i class="fas fa-user-cog me-2 text-muted"></i>个人设置</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>退出登录</a></li>
+                            {% else %}
+                                <li><a class="dropdown-item" href="{{ url_for('login') }}"><i class="fas fa-sign-in-alt me-2"></i>登录</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3 sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i>
+                                系统仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('data_') %}active{% endif %}" href="{{ url_for('data_management') }}">
+                                <i class="fas fa-database"></i>
+                                数据管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('growth_') %}active{% endif %}" href="{{ url_for('growth_assessment') }}">
+                                <i class="fas fa-chart-line"></i>
+                                生长评估
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('carbon_') %}active{% endif %}" href="{{ url_for('carbon_assessment') }}">
+                                <i class="fas fa-leaf"></i>
+                                碳汇评估
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('correlation_') %}active{% endif %}" href="{{ url_for('correlation_analysis') }}">
+                                <i class="fas fa-project-diagram"></i>
+                                关联分析
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('scenario_') %}active{% endif %}" href="{{ url_for('scenario_prediction') }}">
+                                <i class="fas fa-crystal-ball"></i>
+                                情景预测
+                            </a>
+                        </li>
+
+                        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span style="font-size: 0.8rem; color: rgba(255,255,255,0.4);">高级功能</span>
+                        </h6>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('system_') %}active{% endif %}" href="{{ url_for('system_management') }}">
+                                <i class="fas fa-cog"></i>
+                                系统管理
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="fixed-bottom d-none d-md-block p-3" style="width: inherit; color: rgba(255,255,255,0.3); font-size: 0.75rem;">
+                        <p class="mb-0 text-center">© 2024 樟树生态监测</p>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 mb-5">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050; margin-top: 60px;">
+                            {% for category, message in messages %}
+                                <div class="toast show align-items-center text-white bg-{{ 'danger' if category == 'error' else 'success' }} border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                                    <div class="d-flex">
+                                        <div class="toast-body">
+                                            <i class="fas {{ 'fa-exclamation-circle' if category == 'error' else 'fa-check-circle' }} me-2"></i>
+                                            {{ message }}
+                                        </div>
+                                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <script>
+        // 简单的脚本：自动隐藏 Toast 消息
+        document.addEventListener('DOMContentLoaded', function() {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+            var toastList = toastElList.map(function (toastEl) {
+                // 3秒后自动关闭
+                setTimeout(function() {
+                    var toast = new bootstrap.Toast(toastEl);
+                    toast.hide();
+                }, 3000);
+                return new bootstrap.Toast(toastEl)
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
