@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block title %}关联分析 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 变量选择按钮组样式 (Tag Cloud Style) */
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #3498db;
+        border-color: #3498db;
+        color: white;
+        box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .variable-selector-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .variable-selector-grid label {
+        flex: 1 1 auto;
+        text-align: center;
+        min-width: 80px;
+    }
+
+    /* 分析卡片样式 - 顶部彩条区分不同分析类型 */
+    .analysis-card {
+        border: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        transition: transform 0.3s;
+        border-top: 4px solid transparent;
+        height: 100%;
+    }
+
+    .analysis-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    .analysis-card.uni { border-top-color: #3498db; }  /* 蓝色：单变量 */
+    .analysis-card.bi { border-top-color: #9b59b6; }   /* 紫色：双变量 */
+    .analysis-card.multi { border-top-color: #e67e22; } /* 橙色：多变量 */
+
+    /* 图表画板背景 - 工程网格纹理 */
+    .chart-board {
+        background-color: #f8f9fa;
+        background-image: linear-gradient(#e9ecef 1px, transparent 1px),
+                          linear-gradient(90deg, #e9ecef 1px, transparent 1px);
+        background-size: 20px 20px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        min-height: 350px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .chart-board.has-chart {
+        background-image: none; /* 有图表时移除网格，避免干扰 */
+        background-color: white;
+    }
+
+    /* 统计结果表格 - 极客风格 */
+    .stats-table td {
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: #2c3e50;
+    }
+
+    .stats-table tr:nth-child(even) {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    /* 关联强度指示器 */
+    .correlation-badge {
+        font-size: 0.9rem;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        display: inline-block;
+    }
+    .corr-high { background-color: #ffeaa7; color: #d35400; }
+    .corr-med { background-color: #dfe6e9; color: #2d3436; }
+    .corr-sig { background-color: #55efc4; color: #00b894; }
+
+    /* Loading 遮罩层 */
+    #loadingOverlay {
+        backdrop-filter: blur(3px);
+    }
+
+    /* 辅助颜色 */
+    .text-purple { color: #9b59b6 !important; }
+    .bg-purple { background-color: #9b59b6 !important; }
+    .btn-outline-purple { color: #9b59b6; border-color: #9b59b6; }
+    .btn-outline-purple:hover { background-color: #9b59b6; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-dark"><i class="fas fa-project-diagram me-2 text-warning"></i>数据关联分析</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+            <i class="fas fa-sync-alt me-1"></i> 重置所有分析
+        </button>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card analysis-card uni">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-chart-bar me-2 text-primary"></i>单变量分布透视</h5>
+                <span class="badge bg-primary bg-opacity-10 text-primary">基础统计</span>
+            </div>
+            <div class="card-body">
+                <form id="univariateForm">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label small fw-bold text-muted">分析目标变量</label>
+                            <select class="form-select" id="univariate_variable" name="variable" required>
+                                <option value="" selected disabled>请选择变量...</option>
+                                <optgroup label="生长指标">
+                                    <option value="tree_age">树龄 (Year)</option>
+                                    <option value="dbh">胸围 (DBH)</option>
+                                    <option value="tree_height">树高 (Height)</option>
+                                    <option value="annual_carbon_seq">年固碳量 (Carbon)</option>
+                                </optgroup>
+                                <optgroup label="环境因子">
+                                    <option value="total_precipitation">总降水量</option>
+                                    <option value="avg_temperature">平均气温</option>
+                                    <option value="avg_humidity">平均湿度</option>
+                                    <option value="altitude">海拔高度</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted">可视化类型</label>
+                            <select class="form-select" id="chart_type" name="chart_type">
+                                <option value="histogram">直方图 (Histogram)</option>
+                                <option value="density">密度曲线 (Density)</option>
+                                <option value="boxplot">箱线图 (Boxplot)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" class="btn btn-primary px-4" onclick="analyzeUnivariate()">
+                                <i class="fas fa-play me-1"></i> 分析分布
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr class="text-muted opacity-25 my-4">
+
+                <div id="univariateResult" class="d-none">
+                    <div class="chart-board has-chart mb-3">
+                        <canvas id="univariateChart"></canvas>
+                    </div>
+
+                    <h6 class="small fw-bold text-muted text-uppercase mb-2">描述性统计量</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm stats-table table-bordered mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>统计指标</th>
+                                    <th>数值</th>
+                                </tr>
+                            </thead>
+                            <tbody id="univariateStatsBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="univariatePlaceholder" class="text-center py-5 text-muted">
+                    <i class="fas fa-chart-area fa-3x mb-3 opacity-25"></i>
+                    <p class="mb-0">请选择变量并点击分析按钮</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card analysis-card bi">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-purple"></i>双变量关联探索</h5>
+                <span class="badge bg-purple bg-opacity-10 text-purple">相关性</span>
+            </div>
+            <div class="card-body">
+                <form id="bivariateForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">变量 X (自变量)</label>
+                            <select class="form-select" id="variable1" name="variable1" required>
+                                <option value="" selected disabled>选择变量 X...</option>
+                                <option value="tree_age">树龄</option>
+                                <option value="dbh">胸围</option>
+                                <option value="tree_height">树高</option>
+                                <option value="total_precipitation">总降水量</option>
+                                <option value="avg_temperature">平均气温</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">变量 Y (因变量)</label>
+                            <select class="form-select" id="variable2" name="variable2" required>
+                                <option value="" selected disabled>选择变量 Y...</option>
+                                <option value="annual_carbon_seq">年固碳量</option>
+                                <option value="tree_height">树高</option>
+                                <option value="dbh">胸围</option>
+                                <option value="avg_humidity">平均湿度</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">可视化类型</label>
+                            <select class="form-select" id="bivariate_chart_type" name="chart_type">
+                                <option value="scatter">散点图 (Scatter)</option>
+                                <option value="line">折线图 (Line)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">相关系数算法</label>
+                            <select class="form-select" id="correlation_type" name="correlation_type">
+                                <option value="pearson">Pearson (线性)</option>
+                                <option value="spearman">Spearman (秩相关)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" class="btn btn-outline-purple px-4" onclick="analyzeBivariate()">
+                                <i class="fas fa-random me-1"></i> 分析关联
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <hr class="text-muted opacity-25 my-4">
+
+                <div id="bivariateResult" class="d-none">
+                    <div class="chart-board has-chart mb-3">
+                        <canvas id="bivariateChart"></canvas>
+                    </div>
+
+                    <div class="alert alert-light border-start border-4 border-purple shadow-sm">
+                        <div id="correlationResult" class="d-flex justify-content-around text-center">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="bivariatePlaceholder" class="text-center py-5 text-muted">
+                    <i class="fas fa-bezier-curve fa-3x mb-3 opacity-25"></i>
+                    <p class="mb-0">配置变量并探索它们的关系</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card analysis-card multi mb-5">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="fas fa-th me-2 text-warning" style="color: #e67e22;"></i>多维因子矩阵分析</h5>
+        <span class="badge bg-warning bg-opacity-10 text-dark">Heatmap Matrix</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 border-end">
+                <form id="multivariateForm">
+                    <h6 class="small fw-bold text-muted text-uppercase mb-3">选择参与分析的变量</h6>
+                    <p class="small text-muted mb-3"><i class="fas fa-info-circle me-1"></i>请至少选择3个变量</p>
+
+                    <div class="variable-selector-grid mb-4">
+                        <input type="checkbox" class="btn-check" id="mv_age" name="variables" value="tree_age" checked>
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_age">树龄</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_dbh" name="variables" value="dbh" checked>
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_dbh">胸围</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_height" name="variables" value="tree_height" checked>
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_height">树高</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_carbon" name="variables" value="annual_carbon_seq" checked>
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_carbon">固碳量</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_precip" name="variables" value="total_precipitation">
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_precip">降水</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_temp" name="variables" value="avg_temperature">
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_temp">气温</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_wind" name="variables" value="avg_wind_speed">
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_wind">风速</label>
+
+                        <input type="checkbox" class="btn-check" id="mv_alt" name="variables" value="altitude">
+                        <label class="btn btn-outline-primary btn-sm rounded-pill" for="mv_alt">海拔</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">计算算法</label>
+                        <select class="form-select form-select-sm" name="correlation_type">
+                            <option value="pearson">Pearson</option>
+                            <option value="spearman">Spearman</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-warning w-100 text-white shadow-sm" onclick="analyzeMultivariate()">
+                        <i class="fas fa-burn me-2"></i>生成相关性热力图
+                    </button>
+                </form>
+            </div>
+
+            <div class="col-md-9">
+                <div id="multivariateResult" class="d-none h-100 d-flex flex-column ps-md-3">
+                    <div class="chart-board has-chart flex-grow-1 mb-3" style="min-height: 400px;">
+                        <canvas id="correlationHeatmap"></canvas>
+                    </div>
+
+                    <div class="card bg-light border-0">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="small fw-bold mb-2"><i class="fas fa-star text-warning me-2"></i>发现强相关关系 (|r| > 0.5)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless mb-0 small" id="strongCorrelationsTable">
+                                    <thead>
+                                        <tr class="text-muted border-bottom">
+                                            <th>变量对 (Pair)</th>
+                                            <th>相关系数 (r)</th>
+                                            <th>关系类型</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="font-family: monospace;">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="multivariatePlaceholder" class="h-100 d-flex flex-column align-items-center justify-content-center text-muted opacity-50">
+                    <i class="fas fa-th fa-5x mb-3"></i>
+                    <h4>多变量相关性矩阵</h4>
+                    <p>请在左侧选择变量并点击按钮开始计算</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// --- 工具函数 ---
+function showLoading(msg = '正在进行科学计算...') {
+    let loading = document.getElementById('loadingOverlay');
+    if (!loading) {
+        loading = document.createElement('div');
+        loading.id = 'loadingOverlay';
+        loading.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;`;
+        loading.innerHTML = `<div class="text-center"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 fw-bold text-primary">${msg}</div></div>`;
+        document.body.appendChild(loading);
+    }
+}
+
+function hideLoading() {
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) loading.remove();
+}
+
+function showAlert(msg) {
+    alert(msg); // 简单提示，实际可替换为 Toast
+}
+
+// ----------------------
+// 1. 单变量分析逻辑
+// ----------------------
+function analyzeUnivariate() {
+    const form = document.getElementById('univariateForm');
+    const variable = form.variable.value;
+
+    if (!variable) { showAlert('请先选择一个分析变量！'); return; }
+
+    showLoading();
+
+    // 模拟后端返回数据
+    setTimeout(() => {
+        const result = {
+            stats: {
+                '样本总数 (N)': 1250,
+                '平均值 (Mean)': 45.2,
+                '标准差 (Std Dev)': 12.5,
+                '中位数 (Median)': 44.8,
+                '最小值 (Min)': 10.0,
+                '最大值 (Max)': 98.5
+            },
+            chart_type: form.chart_type.value,
+            variable: variable,
+            // 模拟图表数据
+            labels: ['0-20', '20-40', '40-60', '60-80', '80-100'],
+            data: [50, 250, 450, 300, 200]
+        };
+
+        displayUnivariateResult(result);
+        hideLoading();
+    }, 800);
+}
+
+function displayUnivariateResult(result) {
+    document.getElementById('univariatePlaceholder').classList.add('d-none');
+    document.getElementById('univariateResult').classList.remove('d-none');
+
+    // 填充表格
+    const tbody = document.getElementById('univariateStatsBody');
+    tbody.innerHTML = '';
+    for (const [key, val] of Object.entries(result.stats)) {
+        tbody.innerHTML += `<tr><td>${key}</td><td class="fw-bold">${val}</td></tr>`;
+    }
+
+    // 绘制图表
+    const ctx = document.getElementById('univariateChart').getContext('2d');
+    if (window.uniChart) window.uniChart.destroy();
+
+    const isLine = result.chart_type === 'density';
+
+    window.uniChart = new Chart(ctx, {
+        type: isLine ? 'line' : 'bar',
+        data: {
+            labels: result.labels,
+            datasets: [{
+                label: result.variable + ' 分布',
+                data: result.data,
+                backgroundColor: isLine ? 'rgba(52, 152, 219, 0.2)' : 'rgba(52, 152, 219, 0.6)',
+                borderColor: '#3498db',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: isLine
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [2, 2] } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// ----------------------
+// 2. 双变量分析逻辑
+// ----------------------
+function analyzeBivariate() {
+    const form = document.getElementById('bivariateForm');
+    if (!form.variable1.value || !form.variable2.value) {
+        showAlert('请选择两个不同的变量进行对比！'); return;
+    }
+
+    showLoading('正在计算相关性系数...');
+
+    setTimeout(() => {
+        // 模拟结果
+        const result = {
+            correlation: 0.8542,
+            p_value: 0.0001,
+            strength: '强相关',
+            direction: '正向',
+            // 模拟散点数据
+            data: Array.from({length: 50}, () => ({x: Math.random()*100, y: Math.random()*100 + Math.random()*50}))
+        };
+        displayBivariateResult(result);
+        hideLoading();
+    }, 800);
+}
+
+function displayBivariateResult(result) {
+    document.getElementById('bivariatePlaceholder').classList.add('d-none');
+    document.getElementById('bivariateResult').classList.remove('d-none');
+
+    // 显示统计指标
+    const resDiv = document.getElementById('correlationResult');
+    resDiv.innerHTML = `
+        <div>
+            <div class="small text-muted mb-1">Pearson 相关系数 (r)</div>
+            <div class="h3 fw-bold text-purple" style="font-family:monospace;">${result.correlation.toFixed(4)}</div>
+        </div>
+        <div>
+            <div class="small text-muted mb-1">P-Value (显著性)</div>
+            <div class="h3 fw-bold text-success" style="font-family:monospace;">&lt; 0.001</div>
+        </div>
+        <div>
+            <div class="small text-muted mb-1">判定结论</div>
+            <span class="correlation-badge corr-high">${result.strength}</span>
+        </div>
+    `;
+
+    // 绘制图表
+    const ctx = document.getElementById('bivariateChart').getContext('2d');
+    if (window.biChart) window.biChart.destroy();
+
+    window.biChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '样本点',
+                data: result.data,
+                backgroundColor: 'rgba(155, 89, 182, 0.6)',
+                borderColor: 'rgba(155, 89, 182, 1)',
+                borderWidth: 1,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: '变量 X' } },
+                y: { title: { display: true, text: '变量 Y' } }
+            }
+        }
+    });
+}
+
+// ----------------------
+// 3. 多变量分析逻辑
+// ----------------------
+function analyzeMultivariate() {
+    const checkboxes = document.querySelectorAll('input[name="variables"]:checked');
+    if (checkboxes.length < 3) {
+        showAlert('请至少选择 3 个变量以生成热力图矩阵！'); return;
+    }
+
+    showLoading('正在构建相关性矩阵...');
+
+    setTimeout(() => {
+        // 模拟数据
+        const labels = Array.from(checkboxes).map(c => c.nextElementSibling.innerText);
+        const size = labels.length;
+        // 生成模拟矩阵数据 (1是对角线)
+        const matrix = [];
+        for(let i=0; i<size; i++) {
+            for(let j=0; j<size; j++) {
+                let val = i===j ? 1 : (Math.random() * 2 - 1); // -1 to 1
+                matrix.push({x: labels[i], y: labels[j], v: val});
+            }
+        }
+
+        displayMultivariateResult(labels, matrix);
+        hideLoading();
+    }, 1000);
+}
+
+function displayMultivariateResult(labels, matrixData) {
+    document.getElementById('multivariatePlaceholder').classList.add('d-none');
+    document.getElementById('multivariateResult').classList.remove('d-none');
+
+    // 绘制矩阵热力图 (使用 Chart.js Matrix 插件模拟，这里用散点图模拟格子效果简化)
+    const ctx = document.getElementById('correlationHeatmap').getContext('2d');
+    if (window.multiChart) window.multiChart.destroy();
+
+    // 注意：标准的 Chart.js 需要 chartjs-chart-matrix 插件画热力图
+    // 这里为了兼容性，我们用气泡图模拟，或者您可以引入插件
+    // 为演示效果，这里简化为创建一个新的 Chart
+    // 实际项目中建议使用 ApexCharts 或 ECharts 绘制热力图会更简单
+
+    window.multiChart = new Chart(ctx, {
+        type: 'bubble', // 模拟热力图点
+        data: {
+            datasets: [{
+                label: 'Correlation',
+                data: matrixData.map((d, i) => ({
+                    x: d.x,
+                    y: d.y,
+                    r: Math.abs(d.v) * 15 + 5, // 半径代表强度
+                    v: d.v
+                })),
+                backgroundColor: function(context) {
+                    const val = context.raw?.v;
+                    if(val === undefined) return '#ccc';
+                    // 正相关为橙色，负相关为蓝色
+                    return val > 0 ? `rgba(230, 126, 34, ${Math.abs(val)})` : `rgba(52, 152, 219, ${Math.abs(val)})`;
+                }
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { type: 'category', labels: labels },
+                y: { type: 'category', labels: labels }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return `r = ${ctx.raw.v.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 填充强相关表格
+    const tbody = document.getElementById('strongCorrelationsTable').querySelector('tbody');
+    tbody.innerHTML = '';
+    // 筛选部分模拟数据展示
+    const demoCorrelations = [
+        {pair: '树龄 & 胸围', r: 0.89, type: '强正相关'},
+        {pair: '胸围 & 固碳量', r: 0.92, type: '强正相关'},
+        {pair: '海拔 & 气温', r: -0.65, type: '中负相关'}
+    ];
+
+    demoCorrelations.forEach(item => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${item.pair}</td>
+                <td class="fw-bold">${item.r}</td>
+                <td><span class="badge ${item.r>0 ? 'bg-warning text-dark' : 'bg-info text-dark'}">${item.type}</span></td>
+            </tr>
+        `;
+    });
+}
+</script>
+{% endblock %}
