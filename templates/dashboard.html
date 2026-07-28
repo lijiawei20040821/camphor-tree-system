@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}系统仪表盘 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* --- 统计卡片样式 --- */
+    .stat-card {
+        border: none;
+        border-radius: 15px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+        min-height: 140px;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .stat-card .card-body {
+        position: relative;
+        z-index: 2;
+    }
+
+    .stat-icon-bg {
+        position: absolute;
+        right: -20px;
+        bottom: -20px;
+        font-size: 8rem;
+        opacity: 0.15;
+        transform: rotate(-15deg);
+        z-index: 1;
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover .stat-icon-bg {
+        transform: rotate(0deg) scale(1.1);
+        opacity: 0.2;
+    }
+
+    /* 渐变配色 */
+    .bg-gradient-primary { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%); }
+
+    /* --- 快速操作区样式 --- */
+    .action-card {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 12px;
+        text-align: center;
+        padding: 20px;
+        transition: all 0.3s ease;
+        height: 100%;
+        text-decoration: none !important;
+        display: block;
+        color: var(--text-color);
+    }
+
+    .action-card:hover {
+        background: #fff;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        transform: translateY(-5px);
+        border-color: transparent;
+    }
+
+    .action-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        font-size: 1.5rem;
+        transition: all 0.3s;
+    }
+
+    .action-card:hover .action-icon-wrapper {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* 配色辅助类 */
+    .text-primary-soft { color: #3498db; background: rgba(52, 152, 219, 0.1); }
+    .text-success-soft { color: #27ae60; background: rgba(39, 174, 96, 0.1); }
+    .text-info-soft { color: #17a2b8; background: rgba(23, 162, 184, 0.1); }
+    .text-warning-soft { color: #f39c12; background: rgba(243, 156, 18, 0.1); }
+    .text-danger-soft { color: #e74c3c; background: rgba(231, 76, 60, 0.1); }
+    .text-secondary-soft { color: #95a5a6; background: rgba(149, 165, 166, 0.1); }
+
+    .trend-indicator {
+        font-size: 0.8rem;
+        background: rgba(255,255,255,0.2);
+        padding: 2px 8px;
+        border-radius: 10px;
+        display: inline-block;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">系统仪表盘</h1>
+        <p class="text-muted mb-0">欢迎回来，这里是樟树生态监测系统的实时概览。</p>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i> 刷新数据
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-download me-1"></i> 导出报表
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-primary">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">总监测数据</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold">{{ total_trees }}</h2>
+                    <span class="ms-2 small">株</span>
+                </div>
+                <div class="trend-indicator mt-3">
+                    <i class="fas fa-arrow-up me-1"></i> 较上月 +5.2%
+                </div>
+                <i class="fas fa-database stat-icon-bg"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-success">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">生长正常</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold">{{ normal_trees }}</h2>
+                    <span class="ms-2 small">株</span>
+                </div>
+                <div class="trend-indicator mt-3">
+                    <i class="fas fa-check me-1"></i> 占比 {{ ((normal_trees / total_trees * 100) if total_trees > 0 else 0) | round(1) }}%
+                </div>
+                <i class="fas fa-tree stat-icon-bg"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-info">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">平均碳汇量</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold">{{ avg_carbon }}</h2>
+                    <span class="ms-2 small">kg/年</span>
+                </div>
+                <div class="trend-indicator mt-3">
+                    <i class="fas fa-leaf me-1"></i> 固碳效益良好
+                </div>
+                <i class="fas fa-cloud stat-icon-bg"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card stat-card bg-gradient-warning">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">今日操作</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold">{{ today_operations }}</h2>
+                    <span class="ms-2 small">次</span>
+                </div>
+                <div class="trend-indicator mt-3">
+                    <i class="fas fa-user-clock me-1"></i> 系统活跃
+                </div>
+                <i class="fas fa-clipboard-list stat-icon-bg"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie me-2 text-success"></i>生长状态分布</h5>
+                <button class="btn btn-sm btn-light rounded-circle"><i class="fas fa-ellipsis-h"></i></button>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>近期碳汇趋势</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-light text-dark active">周</button>
+                    <button class="btn btn-outline-light text-dark">月</button>
+                    <button class="btn btn-outline-light text-dark">年</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="carbonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h5 class="mb-3 ps-2 border-start border-4 border-primary">快速功能入口</h5>
+    <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('data_management') }}" class="action-card">
+                <div class="action-icon-wrapper text-primary-soft">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h6 class="mb-0">数据管理</h6>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('growth_assessment') }}" class="action-card">
+                <div class="action-icon-wrapper text-success-soft">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h6 class="mb-0">生长评估</h6>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('carbon_assessment') }}" class="action-card">
+                <div class="action-icon-wrapper text-info-soft">
+                    <i class="fas fa-leaf"></i>
+                </div>
+                <h6 class="mb-0">碳汇计算</h6>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('correlation_analysis') }}" class="action-card">
+                <div class="action-icon-wrapper text-warning-soft">
+                    <i class="fas fa-project-diagram"></i>
+                </div>
+                <h6 class="mb-0">关联分析</h6>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('scenario_prediction') }}" class="action-card">
+                <div class="action-icon-wrapper text-danger-soft">
+                    <i class="fas fa-crystal-ball"></i>
+                </div>
+                <h6 class="mb-0">情景预测</h6>
+            </a>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <a href="{{ url_for('system_management') }}" class="action-card">
+                <div class="action-icon-wrapper text-secondary-soft">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <h6 class="mb-0">系统设置</h6>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 初始化图表 - 数据来自后端Jinja2变量
+    document.addEventListener('DOMContentLoaded', function() {
+        // 全局Chart配置优化
+        Chart.defaults.font.family = "'Microsoft YaHei', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+        Chart.defaults.color = '#666';
+
+        // 1. 生长状态分布 (Pie Chart)
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        new Chart(growthCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常生长', '生长衰弱', '濒危状态'],
+                datasets: [{
+                    data: [
+                        {{ growth_stats.normal }}, 
+                        {{ growth_stats.weak }}, 
+                        {{ growth_stats.critical }}
+                    ],
+                    backgroundColor: [
+                        '#27ae60', // Green for Normal
+                        '#f39c12', // Orange for Weak
+                        '#e74c3c'  // Red for Critical
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true }
+                    }
+                }
+            }
+        });
+
+        // 2. 碳汇趋势图 (Line Chart)
+        const carbonCtx = document.getElementById('carbonChart').getContext('2d');
+        // 创建渐变填充
+        let gradient = carbonCtx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(52, 152, 219, 0.2)');
+        gradient.addColorStop(1, 'rgba(52, 152, 219, 0)');
+
+        new Chart(carbonCtx, {
+            type: 'line',
+            data: {
+                labels: {{ carbon_trend.labels | tojson }},
+                datasets: [{
+                    label: '平均碳汇量 (kg)',
+                    data: {{ carbon_trend.data | tojson }},
+                    borderColor: '#3498db',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3498db',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        padding: 10,
+                        cornerRadius: 5
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { borderDash: [2, 4], color: '#f0f0f0' },
+                        ticks: { padding: 10 }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { padding: 10 }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
