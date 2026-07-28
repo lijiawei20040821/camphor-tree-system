@@ -1,0 +1,16 @@
+# Railway.app 部署配置
+# 在项目根目录创建 railway.json
+
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "startCommand": "python serve.py",
+    "healthcheckPath": "/",
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 10
+  },
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install -r requirements.txt"
+  }
+}
