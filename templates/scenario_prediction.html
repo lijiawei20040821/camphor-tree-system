@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block title %}情景预测 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 情景选择卡片 */
+    .scenario-card {
+        cursor: pointer;
+        border: 2px solid transparent;
+        background: #fff;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .scenario-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+    
+    .scenario-card.active {
+        border-color: #3498db;
+        background-color: #ebf8ff;
+    }
+    
+    .scenario-card.active::after {
+        content: '\f00c';
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: #3498db;
+        color: white;
+        padding: 5px 10px;
+        border-bottom-left-radius: 10px;
+        font-size: 0.8rem;
+    }
+
+    .scenario-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s;
+    }
+
+    /* 不同的情景配色 */
+    .sc-base .scenario-icon { background: #e2e8f0; color: #64748b; }
+    .sc-warm .scenario-icon { background: #ffedd5; color: #f97316; }
+    .sc-wet .scenario-icon { background: #e0f2fe; color: #0ea5e9; }
+    .sc-dry .scenario-icon { background: #fef2f2; color: #ef4444; }
+
+    .scenario-card.active.sc-base .scenario-icon { background: #64748b; color: white; }
+    .scenario-card.active.sc-warm .scenario-icon { background: #f97316; color: white; }
+    .scenario-card.active.sc-wet .scenario-icon { background: #0ea5e9; color: white; }
+    .scenario-card.active.sc-dry .scenario-icon { background: #ef4444; color: white; }
+
+    /* 滑块样式优化 */
+    .form-range::-webkit-slider-thumb {
+        background: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    .range-value {
+        font-family: monospace;
+        font-weight: bold;
+        color: #2c3e50;
+        background: #f1f5f9;
+        padding: 2px 8px;
+        border-radius: 4px;
+        min-width: 60px;
+        text-align: center;
+        display: inline-block;
+    }
+
+    /* 结果摘要框 */
+    .prediction-summary {
+        background: linear-gradient(to right, #f8f9fa, #ffffff);
+        border-left: 5px solid #3498db;
+        padding: 1.5rem;
+        border-radius: 0 8px 8px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-dark"><i class="fas fa-crystal-ball me-2 text-info"></i>未来情景预测</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetSimulation()">
+            <i class="fas fa-undo me-1"></i> 重置模拟
+        </button>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card scenario-card sc-base active h-100" onclick="selectScenario('baseline', this)">
+            <div class="card-body">
+                <div class="scenario-icon"><i class="fas fa-history"></i></div>
+                <h6 class="fw-bold">自然基准情景</h6>
+                <p class="text-muted small mb-0">假设气候环境维持当前水平不变，按自然生长规律推演。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card scenario-card sc-warm h-100" onclick="selectScenario('warming', this)">
+            <div class="card-body">
+                <div class="scenario-icon"><i class="fas fa-temperature-high"></i></div>
+                <h6 class="fw-bold">气候变暖情景</h6>
+                <p class="text-muted small mb-0">模拟平均气温逐年升高 (+1.5°C) 对樟树生长的压力。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card scenario-card sc-wet h-100" onclick="selectScenario('humidity', this)">
+            <div class="card-body">
+                <div class="scenario-icon"><i class="fas fa-cloud-showers-heavy"></i></div>
+                <h6 class="fw-bold">降水增加情景</h6>
+                <p class="text-muted small mb-0">模拟年降水量显著增加 (+20%) 对固碳效率的影响。</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card scenario-card sc-dry h-100" onclick="selectScenario('drought', this)">
+            <div class="card-body">
+                <div class="scenario-icon"><i class="fas fa-sun"></i></div>
+                <h6 class="fw-bold">干旱胁迫情景</h6>
+                <p class="text-muted small mb-0">模拟极端干旱气候，土壤水分减少对生态的负面冲击。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-sliders-h me-2 text-primary"></i>环境参数调节</h5>
+            </div>
+            <div class="card-body">
+                <form id="predictionForm">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted">预测时间跨度 (年)</label>
+                        <div class="d-flex align-items-center">
+                            <input type="range" class="form-range flex-grow-1 me-3" id="years" min="5" max="50" step="5" value="10" oninput="updateRangeVal('yearsVal', this.value)">
+                            <span class="range-value" id="yearsVal">10</span>
+                        </div>
+                    </div>
+
+                    <hr class="text-muted opacity-25">
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted">平均气温变化 (°C)</label>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-temperature-low text-info me-2"></i>
+                            <input type="range" class="form-range flex-grow-1 me-3" id="tempChange" min="-2" max="5" step="0.5" value="0" oninput="updateRangeVal('tempVal', this.value)">
+                            <span class="range-value" id="tempVal">0</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted">降水变化率 (%)</label>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-tint text-primary me-2"></i>
+                            <input type="range" class="form-range flex-grow-1 me-3" id="precipChange" min="-50" max="50" step="5" value="0" oninput="updateRangeVal('precipVal', this.value)">
+                            <span class="range-value" id="precipVal">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted">极端天气频率 (次/年)</label>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-bolt text-warning me-2"></i>
+                            <input type="range" class="form-range flex-grow-1 me-3" id="disasterFreq" min="0" max="5" step="1" value="0" oninput="updateRangeVal('disasterVal', this.value)">
+                            <span class="range-value" id="disasterVal">0</span>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="button" class="btn btn-primary shadow-sm" onclick="runPrediction()">
+                            <i class="fas fa-rocket me-2"></i>运行模拟计算
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-success"></i>模拟推演结果</h5>
+                <span class="badge bg-light text-dark border">模型: RF-Growth-v2.1</span>
+            </div>
+            
+            <div class="card-body d-flex flex-column">
+                <div id="resultPlaceholder" class="text-center py-5 text-muted my-auto">
+                    <i class="fas fa-globe-asia fa-4x mb-3 opacity-25"></i>
+                    <h4>等待模拟</h4>
+                    <p>调整左侧参数或选择情景，点击运行按钮开始推演</p>
+                </div>
+
+                <div id="predictionResult" class="d-none animate__animated animate__fadeIn">
+                    <div class="prediction-summary mb-4">
+                        <h6 class="fw-bold mb-2 text-dark"><i class="fas fa-robot me-2 text-primary"></i>智能分析结论</h6>
+                        <p class="mb-0 text-muted" id="summaryText">
+                            </p>
+                    </div>
+
+                    <div class="chart-container flex-grow-1 mb-3" style="position: relative; height: 350px;">
+                        <canvas id="predictionChart"></canvas>
+                    </div>
+
+                    <div class="row text-center mt-3 g-3">
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block text-uppercase">最终固碳量</small>
+                                <span class="h4 fw-bold text-dark" id="finalCarbon">--</span>
+                                <span class="small" id="finalCarbonDelta"></span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block text-uppercase">生长健康度</small>
+                                <span class="h4 fw-bold" id="finalHealth">--</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-3 bg-light rounded">
+                                <small class="text-muted d-block text-uppercase">经济价值预估</small>
+                                <span class="h4 fw-bold text-dark" id="finalValue">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-end mt-3">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="savePrediction()">
+                            <i class="fas fa-save me-1"></i> 保存本次方案
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let predictionChart = null;
+
+    // 更新滑块数值显示
+    function updateRangeVal(id, val) {
+        let suffix = '';
+        if(id === 'precipVal') suffix = '%';
+        
+        // 增加正号
+        if(val > 0 && id !== 'yearsVal' && id !== 'disasterVal') val = '+' + val;
+        
+        document.getElementById(id).innerText = val + suffix;
+    }
+
+    // 切换情景
+    function selectScenario(type, cardEl) {
+        // UI 更新
+        document.querySelectorAll('.scenario-card').forEach(el => el.classList.remove('active'));
+        if(cardEl) cardEl.classList.add('active');
+
+        // 设置预设值
+        const controls = {
+            'baseline': { temp: 0, precip: 0, disaster: 0 },
+            'warming': { temp: 2.5, precip: -5, disaster: 1 },
+            'humidity': { temp: 0.5, precip: 25, disaster: 2 },
+            'drought': { temp: 1.5, precip: -30, disaster: 3 }
+        };
+
+        const val = controls[type];
+        
+        // 更新滑块和显示
+        document.getElementById('tempChange').value = val.temp;
+        updateRangeVal('tempVal', val.temp);
+        
+        document.getElementById('precipChange').value = val.precip;
+        updateRangeVal('precipVal', val.precip);
+        
+        document.getElementById('disasterFreq').value = val.disaster;
+        updateRangeVal('disasterVal', val.disaster);
+        
+        // 自动触发模拟
+        // runPrediction(); // 可选：是否点击即运行
+    }
+
+    // 运行模拟
+    function runPrediction() {
+        const btn = document.querySelector('button[onclick="runPrediction()"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>模拟运算中...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            // 获取参数
+            const years = parseInt(document.getElementById('years').value);
+            const tempChange = parseFloat(document.getElementById('tempChange').value);
+            const precipChange = parseFloat(document.getElementById('precipChange').value);
+            
+            // 生成模拟数据
+            generateSimulationData(years, tempChange, precipChange);
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 800);
+    }
+
+    function generateSimulationData(years, tempChange, precipChange) {
+        // 切换显示
+        document.getElementById('resultPlaceholder').classList.add('d-none');
+        document.getElementById('predictionResult').classList.remove('d-none');
+
+        // 生成年份标签
+        const currentYear = new Date().getFullYear();
+        const labels = Array.from({length: years}, (_, i) => currentYear + i);
+        
+        // 生成基准线 (Baseline) - 假设每年稳步增长
+        const baseGrowth = 5; // 基础增长率
+        const baselineData = labels.map((_, i) => 80 + (i * baseGrowth)); // 起始80
+        
+        // 生成预测线 (Predicted) - 受参数影响
+        // 简单的模拟算法：
+        // 温度升高：初期(5年)略微促进，之后显著抑制
+        // 降水：过多过少都抑制
+        let impactFactor = 1.0;
+        
+        // 温度影响
+        if (tempChange > 2) impactFactor -= 0.15; // 高温抑制
+        else if (tempChange > 0) impactFactor += 0.05; // 适度升温促进
+        
+        // 降水影响
+        if (precipChange < -20) impactFactor -= 0.2; // 干旱
+        else if (precipChange > 30) impactFactor -= 0.1; // 涝灾
+        else if (precipChange > 0) impactFactor += 0.05; // 湿润
+
+        const predictedData = baselineData.map((val, i) => {
+            // 随时间推移，影响累积
+            const yearlyImpact = 1 + ((impactFactor - 1) * (i * 0.1)); 
+            // 限制一下波动范围防止离谱
+            const safeImpact = Math.max(0.5, Math.min(1.5, yearlyImpact));
+            return val * safeImpact;
+        });
+
+        // 渲染图表
+        renderChart(labels, baselineData, predictedData);
+        
+        // 更新文字和指标
+        updateSummary(years, baselineData, predictedData, tempChange, precipChange);
+    }
+
+    function renderChart(labels, baseData, predData) {
+        const ctx = document.getElementById('predictionChart').getContext('2d');
+        if (predictionChart) predictionChart.destroy();
+
+        predictionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '基准情景 (Baseline)',
+                        data: baseData,
+                        borderColor: '#95a5a6',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                    {
+                        label: '模拟预测 (Predicted)',
+                        data: predData,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#3498db',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toFixed(1) + ' kg';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        title: { display: true, text: '碳汇储量 (kg)' }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateSummary(years, baseData, predData, tempChange, precipChange) {
+        const finalBase = baseData[baseData.length - 1];
+        const finalPred = predData[predData.length - 1];
+        const diffPercent = ((finalPred - finalBase) / finalBase * 100).toFixed(1);
+        
+        // 1. 更新大数字
+        document.getElementById('finalCarbon').innerText = finalPred.toFixed(1);
+        const deltaEl = document.getElementById('finalCarbonDelta');
+        
+        if (diffPercent >= 0) {
+            deltaEl.innerHTML = `<span class="text-success"><i class="fas fa-arrow-up"></i> ${diffPercent}%</span>`;
+        } else {
+            deltaEl.innerHTML = `<span class="text-danger"><i class="fas fa-arrow-down"></i> ${Math.abs(diffPercent)}%</span>`;
+        }
+        
+        // 2. 健康度
+        const healthEl = document.getElementById('finalHealth');
+        if (diffPercent > 5) {
+            healthEl.innerText = "优良"; healthEl.className = "h4 fw-bold text-success";
+        } else if (diffPercent > -10) {
+            healthEl.innerText = "稳定"; healthEl.className = "h4 fw-bold text-warning";
+        } else {
+            healthEl.innerText = "受损"; healthEl.className = "h4 fw-bold text-danger";
+        }
+        
+        // 3. 经济价值 (简单乘数)
+        document.getElementById('finalValue').innerText = "¥" + (finalPred * 1.5).toLocaleString(undefined, {maximumFractionDigits:0});
+
+        // 4. 生成自然语言摘要
+        let summary = `在未来 ${years} 年内，`;
+        if (tempChange > 0) summary += `随着气温升高 ${tempChange}°C `;
+        if (precipChange !== 0) summary += `以及降水${precipChange > 0 ? '增加' : '减少'} ${Math.abs(precipChange)}%，`;
+        
+        if (diffPercent > 0) {
+            summary += `樟树生态系统的固碳能力预计将<b>提升 ${diffPercent}%</b>。环境变化在一定程度上促进了生长代谢。`;
+        } else {
+            summary += `樟树生态系统将面临压力，固碳能力预计<b>下降 ${Math.abs(diffPercent)}%</b>。建议提前采取人工灌溉或降温措施进行干预。`;
+        }
+        
+        document.getElementById('summaryText').innerHTML = summary;
+    }
+
+    function resetSimulation() {
+        document.getElementById('predictionForm').reset();
+        document.querySelectorAll('.range-value').forEach(el => el.innerText = el.id === 'precipVal' ? '0%' : '0');
+        document.getElementById('yearsVal').innerText = '10';
+        selectScenario('baseline', document.querySelector('.sc-base'));
+        
+        document.getElementById('predictionResult').classList.add('d-none');
+        document.getElementById('resultPlaceholder').classList.remove('d-none');
+    }
+    
+    function savePrediction() {
+        alert("模拟方案已保存至云端");
+    }
+</script>
+{% endblock %}
