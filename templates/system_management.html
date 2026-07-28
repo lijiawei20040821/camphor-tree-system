@@ -1,0 +1,608 @@
+{% extends "base.html" %}
+
+{% block title %}系统管理 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 系统状态卡片 */
+    .sys-stat-card {
+        border: none;
+        border-radius: 12px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        min-height: 120px;
+        transition: transform 0.3s;
+    }
+
+    .sys-stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .sys-stat-icon {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        font-size: 5rem;
+        opacity: 0.2;
+        transform: rotate(-15deg);
+    }
+
+    .bg-gradient-purple { background: linear-gradient(135deg, #8e44ad, #9b59b6); }
+    .bg-gradient-blue { background: linear-gradient(135deg, #2980b9, #3498db); }
+    .bg-gradient-orange { background: linear-gradient(135deg, #d35400, #e67e22); }
+    .bg-gradient-gray { background: linear-gradient(135deg, #2c3e50, #34495e); }
+
+    /* 维护功能卡片 */
+    .maintenance-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        background: #fff;
+        height: 100%;
+    }
+
+    .maintenance-card:hover {
+        border-color: #3498db;
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .m-icon-box {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        transition: all 0.3s;
+    }
+
+    .maintenance-card:hover .m-icon-box {
+        transform: scale(1.1);
+    }
+
+    /* 日志表格徽章 */
+    .log-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    /* 设置开关 */
+    .form-switch .form-check-input {
+        width: 3em;
+        height: 1.5em;
+        cursor: pointer;
+    }
+
+    .form-switch .form-check-label {
+        margin-left: 10px;
+        line-height: 1.5em;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-dark"><i class="fas fa-cogs me-2 text-secondary"></i>系统管理控制台</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshSystemInfo()">
+                <i class="fas fa-sync-alt me-1"></i> 刷新状态
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card sys-stat-card bg-gradient-purple">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">注册用户</h6>
+                <h2 class="mb-0 fw-bold">{{ total_users }}</h2>
+                <i class="fas fa-users sys-stat-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card sys-stat-card bg-gradient-blue">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">系统日志</h6>
+                <h2 class="mb-0 fw-bold">{{ total_logs }}</h2>
+                <i class="fas fa-history sys-stat-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card sys-stat-card bg-gradient-orange">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">磁盘使用率</h6>
+                <div class="d-flex align-items-center">
+                    <h2 class="mb-0 fw-bold">{{ disk_usage }}%</h2>
+                    <div class="progress flex-grow-1 ms-3" style="height: 6px; background: rgba(255,255,255,0.3);">
+                        <div class="progress-bar bg-white" style="width: {{ disk_usage }}%"></div>
+                    </div>
+                </div>
+                <i class="fas fa-hdd sys-stat-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card sys-stat-card bg-gradient-gray">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">当前版本</h6>
+                <h2 class="mb-0 fw-bold">v{{ system_version }}</h2>
+                <p class="small mb-0 opacity-75 mt-1">最新构建: {{ current_time }}</p>
+                <i class="fas fa-code-branch sys-stat-icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-tools me-2 text-primary"></i>系统维护中心</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3 col-6">
+                        <div class="maintenance-card" onclick="backupDatabase()">
+                            <div class="m-icon-box bg-primary bg-opacity-10 text-primary">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <h6 class="fw-bold">数据备份</h6>
+                            <p class="text-muted small mb-0">手动触发全量备份</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="maintenance-card" onclick="clearCache()">
+                            <div class="m-icon-box bg-warning bg-opacity-10 text-warning">
+                                <i class="fas fa-broom"></i>
+                            </div>
+                            <h6 class="fw-bold">清理缓存</h6>
+                            <p class="text-muted small mb-0">释放系统临时空间</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="maintenance-card" onclick="updateModels()">
+                            <div class="m-icon-box bg-success bg-opacity-10 text-success">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h6 class="fw-bold">模型更新</h6>
+                            <p class="text-muted small mb-0">重新训练预测模型</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="maintenance-card" onclick="checkUpdates()">
+                            <div class="m-icon-box bg-info bg-opacity-10 text-info">
+                                <i class="fas fa-cloud-download-alt"></i>
+                            </div>
+                            <h6 class="fw-bold">检查更新</h6>
+                            <p class="text-muted small mb-0">检测系统新版本</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-shield-alt me-2 text-dark"></i>安全审计日志</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportLogs()">
+                    <i class="fas fa-download me-1"></i> 导出CSV
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="logFilterForm" class="row g-2 mb-4 align-items-end p-3 bg-light rounded-3">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">操作用户</label>
+                        <select class="form-select form-select-sm" name="user_id">
+                            <option value="">全部用户</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">操作类型</label>
+                        <select class="form-select form-select-sm" name="action_type">
+                            <option value="">全部类型</option>
+                            <option value="login">系统登录</option>
+                            <option value="data_import">数据导入</option>
+                            <option value="delete">删除操作</option>
+                            <option value="settings">系统设置</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted">日期范围</label>
+                        <input type="date" class="form-control form-control-sm" name="log_date">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="filterLogs()">
+                            <i class="fas fa-search me-1"></i> 查询
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="logTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>时间</th>
+                                <th>用户</th>
+                                <th>类型</th>
+                                <th>详情</th>
+                                <th>IP来源</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td class="text-muted small">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="fw-bold">{{ log.user.username if log.user else 'System' }}</td>
+                                <td>
+                                    {% if log.action_type == 'login' %}
+                                        <span class="badge bg-success bg-opacity-10 text-success log-badge">登录</span>
+                                    {% elif log.action_type == 'delete' %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger log-badge">删除</span>
+                                    {% elif log.action_type == 'data_import' %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary log-badge">导入</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary log-badge">{{ log.action_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small text-truncate" style="max-width: 200px;" title="{{ log.action_details }}">
+                                    {{ log.action_details }}
+                                </td>
+                                <td class="small text-muted">{{ log.ip_address }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-sliders-h me-2 text-secondary"></i>全局参数配置</h5>
+                <button class="btn btn-sm text-primary p-0" onclick="saveSystemSettings()">保存</button>
+            </div>
+            <div class="card-body">
+                <form id="systemSettingsForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">数据备份频率</label>
+                        <select class="form-select form-select-sm" name="backup_interval">
+                            <option value="1">每天 (Daily)</option>
+                            <option value="7" selected>每周 (Weekly)</option>
+                            <option value="30">每月 (Monthly)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold">会话超时 (分钟)</label>
+                        <input type="number" class="form-control form-control-sm" name="session_timeout" value="120">
+                    </div>
+
+                    <h6 class="small fw-bold text-muted border-bottom pb-2 mb-3">安全与通知</h6>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="notifySwitch" checked>
+                        <label class="form-check-label" for="notifySwitch">启用邮件报警通知</label>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="backupSwitch" checked>
+                        <label class="form-check-label" for="backupSwitch">启用自动异地备份</label>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="auditSwitch" checked>
+                        <label class="form-check-label" for="auditSwitch">强制开启审计日志</label>
+                    </div>
+
+                    <div class="text-end mt-4">
+                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="restoreDefaultSettings()">
+                            <i class="fas fa-undo me-1"></i>恢复默认
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold"><i class="fas fa-user-shield me-2 text-info"></i>用户权限</h5>
+                <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#userModal">
+                    <i class="fas fa-plus me-1"></i>新增
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for user in users %}
+                    <div class="list-group-item px-3 py-3">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-circle p-2 me-3 text-secondary">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">{{ user.username }}</h6>
+                                    <small class="text-muted">{{ user.department }} ·
+                                        {% if user.role == 'admin' %}管理员{% else %}普通用户{% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                                    <li><a class="dropdown-item" href="#" onclick="editUser({{ user.id }})"><i class="fas fa-edit me-2 text-primary"></i>编辑</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="resetPassword({{ user.id }})"><i class="fas fa-key me-2 text-warning"></i>重置密码</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item {{ 'text-danger' if user.is_active else 'text-success' }}" href="#" onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|lower }})">
+                                        <i class="fas {{ 'fa-ban' if user.is_active else 'fa-check' }} me-2"></i>
+                                        {{ '禁用账户' if user.is_active else '启用账户' }}
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="userModalTitle"><i class="fas fa-user-plus me-2"></i>添加用户</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="userForm">
+                    <input type="hidden" id="edit_user_id" name="user_id">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">用户名</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">初始密码</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="留空则不修改">
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">所属部门</label>
+                            <input type="text" class="form-control" id="department" name="department" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">系统角色</label>
+                            <select class="form-select" id="role" name="role">
+                                <option value="user">普通用户</option>
+                                <option value="researcher">科研人员</option>
+                                <option value="admin">管理员</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                        <label class="form-check-label" for="is_active">账户状态：启用</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary px-4" onclick="saveUser()">保存提交</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // --- 辅助工具函数 (本地实现，确保独立运行) ---
+    function showLoading(msg = '处理中...') {
+        let loading = document.getElementById('loadingOverlay');
+        if (!loading) {
+            loading = document.createElement('div');
+            loading.id = 'loadingOverlay';
+            loading.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(2px);`;
+            loading.innerHTML = `<div class="text-center"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 fw-bold text-primary">${msg}</div></div>`;
+            document.body.appendChild(loading);
+        }
+    }
+
+    function hideLoading() {
+        const loading = document.getElementById('loadingOverlay');
+        if (loading) loading.remove();
+    }
+
+    function showAlert(msg, type = 'success') {
+        // 使用 Toast (如果 base.html 有) 或简单 alert
+        const container = document.querySelector('.toast-container') || createToastContainer();
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        const color = type === 'success' ? 'success' : 'danger';
+
+        const toastHtml = `
+            <div class="toast show align-items-center text-white bg-${color} border-0 mb-2 shadow" role="alert" style="min-width: 250px;">
+                <div class="d-flex">
+                    <div class="toast-body"><i class="fas ${icon} me-2"></i>${msg}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+
+        const temp = document.createElement('div');
+        temp.innerHTML = toastHtml;
+        const el = temp.firstElementChild;
+        container.appendChild(el);
+
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 500);
+        }, 3000);
+    }
+
+    function createToastContainer() {
+        const div = document.createElement('div');
+        div.className = 'toast-container position-fixed top-0 end-0 p-3';
+        div.style.zIndex = 1060;
+        div.style.marginTop = '60px';
+        document.body.appendChild(div);
+        return div;
+    }
+
+    // --- 业务逻辑 ---
+
+    // 1. 系统维护操作
+    function backupDatabase() {
+        showLoading('正在执行全量备份...');
+        setTimeout(() => {
+            hideLoading();
+            showAlert('数据库备份成功！备份文件已保存至 /backups 目录。');
+        }, 1500);
+    }
+
+    function clearCache() {
+        if(confirm('确定要清理系统缓存吗？这将导致下次加载稍慢。')) {
+            showLoading('正在清理临时文件...');
+            setTimeout(() => {
+                hideLoading();
+                showAlert('系统缓存已释放 128MB 空间。');
+            }, 1000);
+        }
+    }
+
+    function updateModels() {
+        showLoading('正在重新训练 AI 模型...');
+        setTimeout(() => {
+            hideLoading();
+            showAlert('生长预测模型已更新至 v2.2 版本。');
+        }, 2000);
+    }
+
+    function checkUpdates() {
+        showLoading('正在连接更新服务器...');
+        setTimeout(() => {
+            hideLoading();
+            showAlert('当前已是最新版本 (v2.0.4)，无需更新。', 'success');
+        }, 1200);
+    }
+
+    // 2. 日志筛选
+    function filterLogs() {
+        showLoading('检索日志中...');
+        setTimeout(() => {
+            hideLoading();
+            showAlert('已更新日志列表');
+            // 实际应更新 DOM，这里仅演示交互
+        }, 600);
+    }
+
+    function exportLogs() {
+        showAlert('日志导出任务已提交，下载链接将发送至管理员邮箱。');
+    }
+
+    // 3. 用户管理
+    function editUser(id) {
+        // 模拟获取数据并填充模态框
+        document.getElementById('userModalTitle').innerHTML = '<i class="fas fa-user-edit me-2"></i>编辑用户';
+        document.getElementById('username').value = 'user_' + id;
+        document.getElementById('edit_user_id').value = id;
+        document.getElementById('department').value = '林业科';
+
+        var myModal = new bootstrap.Modal(document.getElementById('userModal'));
+        myModal.show();
+    }
+
+    // 清理模态框（当点击新增时）
+    document.querySelector('[data-bs-target="#userModal"]').addEventListener('click', function() {
+        document.getElementById('userForm').reset();
+        document.getElementById('edit_user_id').value = '';
+        document.getElementById('userModalTitle').innerHTML = '<i class="fas fa-user-plus me-2"></i>添加用户';
+    });
+
+    function saveUser() {
+        const modalEl = document.getElementById('userModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+
+        showLoading('正在保存用户信息...');
+        setTimeout(() => {
+            hideLoading();
+            modal.hide();
+            showAlert('用户数据保存成功！');
+            setTimeout(() => location.reload(), 1000);
+        }, 800);
+    }
+
+    function toggleUserStatus(id, currentStatus) {
+        const action = currentStatus ? '禁用' : '启用';
+        if(confirm(`确定要${action}该用户账户吗？`)) {
+            showLoading('更新状态中...');
+            setTimeout(() => {
+                hideLoading();
+                showAlert(`用户账户已${action}`);
+            }, 600);
+        }
+    }
+
+    function resetPassword(id) {
+        if(confirm('确定要重置该用户的密码为默认密码 (123456) 吗？')) {
+            showLoading('重置中...');
+            setTimeout(() => {
+                hideLoading();
+                showAlert('密码已重置成功。');
+            }, 600);
+        }
+    }
+
+    // 4. 系统设置
+    function saveSystemSettings() {
+        showLoading('保存配置...');
+        setTimeout(() => {
+            hideLoading();
+            showAlert('全局配置已更新并生效。');
+        }, 800);
+    }
+
+    function restoreDefaultSettings() {
+        if(confirm('确定要恢复所有设置为默认值吗？此操作不可撤销。')) {
+            showLoading('正在重置...');
+            setTimeout(() => {
+                hideLoading();
+                showAlert('系统已恢复至出厂设置。');
+                setTimeout(() => location.reload(), 1000);
+            }, 1000);
+        }
+    }
+
+    function refreshSystemInfo() {
+        location.reload();
+    }
+</script>
+{% endblock %}
