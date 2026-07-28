@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+
+{% block title %}碳汇评估 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 生态统计卡片 */
+    .eco-card {
+        border: none;
+        border-radius: 15px;
+        color: white;
+        overflow: hidden;
+        position: relative;
+        transition: transform 0.3s;
+    }
+    
+    .eco-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .eco-card .card-body {
+        position: relative;
+        z-index: 2;
+    }
+    
+    .eco-bg-icon {
+        position: absolute;
+        right: -15px;
+        bottom: -15px;
+        font-size: 6rem;
+        opacity: 0.2;
+        transform: rotate(-20deg);
+        z-index: 1;
+    }
+
+    .bg-forest { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-sky { background: linear-gradient(135deg, #2980b9 0%, #6dd5fa 100%); }
+    .bg-earth { background: linear-gradient(135deg, #b79891 0%, #94716b 100%); }
+    .bg-sun { background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); }
+
+    /* 结果展示区 */
+    .result-panel {
+        background-color: #f8fafc;
+        border: 2px dashed #cbd5e0;
+        border-radius: 12px;
+        transition: all 0.5s ease;
+    }
+    
+    .result-panel.active {
+        background-color: #fff;
+        border-style: solid;
+        border-color: #27ae60;
+        box-shadow: 0 10px 30px rgba(39, 174, 96, 0.15);
+    }
+
+    .carbon-display-lg {
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(45deg, #11998e, #38ef7d);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.2;
+    }
+
+    /* 价值转化卡片 */
+    .value-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        height: 100%;
+        border-bottom: 4px solid transparent;
+        transition: transform 0.3s;
+    }
+    
+    .value-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .value-card.co2 { border-color: #3498db; }
+    .value-card.tree { border-color: #27ae60; }
+    .value-card.money { border-color: #f1c40f; }
+
+    .value-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.2rem;
+    }
+
+    .bg-light-blue { background-color: #ebf8ff; color: #3498db; }
+    .bg-light-green { background-color: #f0fdf4; color: #27ae60; }
+    .bg-light-yellow { background-color: #fffbeb; color: #f59e0b; }
+
+    /* 影响因子 Badge */
+    .factor-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 14px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        margin: 4px;
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+    
+    .factor-pill.positive { border-left: 3px solid #27ae60; }
+    .factor-pill.negative { border-left: 3px solid #e74c3c; }
+
+    /* 排名列表 */
+    .ranking-list .rank-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s;
+    }
+    .ranking-list .rank-item:last-child { border-bottom: none; }
+    .ranking-list .rank-item:hover { background-color: #f8fafc; }
+    
+    .rank-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #e2e8f0;
+        color: #64748b;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 12px;
+    }
+    
+    .rank-item:nth-child(1) .rank-badge { background-color: #ffd700; color: #fff; }
+    .rank-item:nth-child(2) .rank-badge { background-color: #c0c0c0; color: #fff; }
+    .rank-item:nth-child(3) .rank-badge { background-color: #cd7f32; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-dark"><i class="fas fa-leaf me-2 text-success"></i>碳汇能力评估</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetForm()">
+            <i class="fas fa-redo me-1"></i> 重置计算
+        </button>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card eco-card bg-forest">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">系统平均碳汇</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold" id="avgCarbon">85.6</h2>
+                    <span class="ms-1 small opacity-75">kg/年</span>
+                </div>
+                <i class="fas fa-tree eco-bg-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card eco-card bg-sun">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">最高单株记录</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold" id="maxCarbon">115.8</h2>
+                    <span class="ms-1 small opacity-75">kg/年</span>
+                </div>
+                <i class="fas fa-trophy eco-bg-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card eco-card bg-earth">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">累积固碳总量</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold" id="totalCarbon">2,568</h2>
+                    <span class="ms-1 small opacity-75">kg</span>
+                </div>
+                <i class="fas fa-cubes eco-bg-icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="card eco-card bg-sky">
+            <div class="card-body">
+                <h6 class="text-uppercase mb-2 opacity-75">等效 CO₂ 吸收</h6>
+                <div class="d-flex align-items-baseline">
+                    <h2 class="mb-0 fw-bold" id="co2Equivalent">9,420</h2>
+                    <span class="ms-1 small opacity-75">kg</span>
+                </div>
+                <i class="fas fa-cloud eco-bg-icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0"><i class="fas fa-calculator me-2 text-primary"></i>碳汇计算器</h5>
+            </div>
+            <div class="card-body p-4">
+                <form id="carbonAssessmentForm">
+                    <h6 class="text-muted small fw-bold text-uppercase mb-3">基础参数</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label small">树龄</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="treeAge" value="150">
+                                <span class="input-group-text">年</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">树高</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="treeHeight" value="15.2">
+                                <span class="input-group-text">m</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">胸围 (DBH)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="dbh" value="120.5">
+                                <span class="input-group-text">cm</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="text-muted small fw-bold text-uppercase mb-3">环境因子</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label small">土壤紧密度</label>
+                            <select class="form-select form-select-sm" id="soilCompactness">
+                                <option value="疏松">疏松</option>
+                                <option value="中等" selected>中等</option>
+                                <option value="紧密">紧密</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">平均湿度</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="humidity" value="75">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">所属区域</label>
+                            <select class="form-select form-select-sm" id="region">
+                                <option value="天河区">天河区</option>
+                                <option value="越秀区">越秀区</option>
+                                <option value="海珠区">海珠区</option>
+                                <option value="白云区">白云区</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-success w-100 py-2 shadow-sm fw-bold" onclick="calculateCarbon()">
+                        <i class="fas fa-leaf me-2"></i>开始计算
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-7 d-flex flex-column">
+        <div class="result-panel p-4 flex-grow-1 text-center d-flex flex-column justify-content-center" id="resultPlaceholder">
+            <div class="text-muted opacity-50">
+                <i class="fas fa-calculator fa-4x mb-3"></i>
+                <h5>等待计算</h5>
+                <p>请在左侧输入参数并点击计算按钮</p>
+            </div>
+        </div>
+
+        <div class="result-panel p-4 flex-grow-1" id="carbonResult" style="display: none;">
+            <div class="text-center mb-5">
+                <h6 class="text-uppercase text-muted fw-bold mb-0">预估年固碳量</h6>
+                <div class="carbon-display-lg" id="carbonValue">0</div>
+                <div class="text-muted small">千克 (kg) / 年 <span class="badge bg-success bg-opacity-10 text-success ms-2">误差 ±5%</span></div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <div class="value-card co2">
+                        <div class="value-icon bg-light-blue"><i class="fas fa-cloud"></i></div>
+                        <h5 class="fw-bold mb-0" id="co2Absorption">0</h5>
+                        <small class="text-muted">CO₂ 吸收 (kg)</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="value-card tree">
+                        <div class="value-icon bg-light-green"><i class="fas fa-tree"></i></div>
+                        <h5 class="fw-bold mb-0" id="equivalentTrees">0</h5>
+                        <small class="text-muted">等效植树 (棵)</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="value-card money">
+                        <div class="value-icon bg-light-yellow"><i class="fas fa-coins"></i></div>
+                        <h5 class="fw-bold mb-0" id="economicValue">0</h5>
+                        <small class="text-muted">经济价值 (元)</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-start">
+                <h6 class="small fw-bold text-muted mb-2">影响因子分析</h6>
+                <div id="carbonFactors">
+                    </div>
+            </div>
+            
+            <div class="mt-auto pt-4 text-center">
+                <button class="btn btn-outline-secondary btn-sm" onclick="saveCarbonResult()">
+                    <i class="fas fa-save me-1"></i> 保存结果
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-2">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0 fw-bold small text-uppercase">各区碳汇贡献排名</h5>
+            </div>
+            <div class="row g-0">
+                <div class="col-md-8 p-3">
+                    <canvas id="regionCarbonChart" height="200"></canvas>
+                </div>
+                <div class="col-md-4 border-start">
+                    <div class="ranking-list" id="regionRanking">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-bold small text-uppercase">年度碳汇变化趋势</h5>
+                <span class="badge bg-primary bg-opacity-10 text-primary">近5年</span>
+            </div>
+            <div class="card-body">
+                <canvas id="carbonTrendChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let regionChart = null;
+    let trendChart = null;
+
+    // 页面加载
+    document.addEventListener('DOMContentLoaded', function() {
+        // 模拟加载统计数据
+        loadRegionCarbonData();
+        loadCarbonTrendData();
+    });
+
+    // 计算逻辑
+    async function calculateCarbon() {
+        const btn = document.querySelector('button[onclick="calculateCarbon()"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>计算中...';
+        btn.disabled = true;
+
+        // 模拟计算延迟
+        setTimeout(() => {
+            // 获取表单数据
+            const formData = {
+                // ... 实际应获取 DOM 值
+                tree_age: parseFloat(document.getElementById('treeAge').value)
+            };
+            
+            // 模拟结果
+            const result = {
+                carbon_sequestration: 85.6,
+                factors: [
+                    { factor: '胸围尺寸', impact: '强正面', contribution: '+45%' },
+                    { factor: '环境湿度', impact: '正面', contribution: '+12%' },
+                    { factor: '土壤紧密', impact: '负面', contribution: '-5%' }
+                ]
+            };
+
+            displayCarbonResult(result);
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 600);
+    }
+
+    function displayCarbonResult(result) {
+        // 切换显示区域
+        document.getElementById('resultPlaceholder').style.display = 'none';
+        const resultDiv = document.getElementById('carbonResult');
+        resultDiv.style.display = 'block';
+
+        // 动画显示数字 (简单的 CountUp 效果)
+        animateValue("carbonValue", 0, result.carbon_sequestration, 1000);
+
+        // 更新生态价值
+        const co2 = (result.carbon_sequestration * 3.67).toFixed(0);
+        const trees = (result.carbon_sequestration / 12).toFixed(1);
+        const money = (result.carbon_sequestration * 1.5).toFixed(0);
+
+        animateValue("co2Absorption", 0, co2, 1000);
+        animateValue("equivalentTrees", 0, trees, 1000);
+        animateValue("economicValue", 0, money, 1000);
+
+        // 更新因子
+        const factorsDiv = document.getElementById('carbonFactors');
+        factorsDiv.innerHTML = '';
+        result.factors.forEach(f => {
+            const isPos = f.impact.includes('正面');
+            factorsDiv.innerHTML += `
+                <span class="factor-pill ${isPos ? 'positive' : 'negative'}">
+                    <i class="fas ${isPos ? 'fa-arrow-up text-success' : 'fa-arrow-down text-danger'} me-2"></i>
+                    ${f.factor} <span class="text-muted ms-1 small">(${f.contribution})</span>
+                </span>
+            `;
+        });
+    }
+
+    function animateValue(id, start, end, duration) {
+        const obj = document.getElementById(id);
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                obj.innerHTML = end; // Ensure exact final value
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    function resetForm() {
+        document.getElementById('carbonAssessmentForm').reset();
+        document.getElementById('resultPlaceholder').style.display = 'flex';
+        document.getElementById('carbonResult').style.display = 'none';
+    }
+
+    // --- 图表部分 (保持原逻辑，优化配置) ---
+    function loadRegionCarbonData() {
+        const data = {
+            labels: ['天河', '越秀', '海珠', '荔湾', '白云'],
+            data: [120, 98, 86, 75, 62]
+        };
+        
+        // 渲染列表
+        const listDiv = document.getElementById('regionRanking');
+        data.labels.forEach((label, i) => {
+            listDiv.innerHTML += `
+                <div class="rank-item">
+                    <div class="rank-badge">${i+1}</div>
+                    <div class="flex-grow-1">${label}区</div>
+                    <div class="fw-bold text-dark">${data.data[i]}</div>
+                </div>
+            `;
+        });
+
+        // 渲染图表
+        const ctx = document.getElementById('regionCarbonChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: '碳汇量',
+                    data: data.data,
+                    backgroundColor: '#3498db',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false } } }
+            }
+        });
+    }
+
+    function loadCarbonTrendData() {
+        const ctx = document.getElementById('carbonTrendChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['2020', '2021', '2022', '2023', '2024'],
+                datasets: [{
+                    label: '年度平均值',
+                    data: [78, 82, 81, 85, 88],
+                    borderColor: '#2ecc71',
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)'
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: false } }
+            }
+        });
+    }
+    
+    function saveCarbonResult() {
+        alert('结果已保存');
+    }
+</script>
+{% endblock %}
