@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}数据管理 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 拖拽上传区域样式 */
+    .upload-drop-zone {
+        border: 2px dashed #cbd5e0;
+        border-radius: 12px;
+        background-color: #f8fafc;
+        padding: 3rem 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .upload-drop-zone:hover, .upload-drop-zone.drag-over {
+        border-color: #3498db;
+        background-color: #ebf8ff;
+        transform: scale(1.01);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        color: #a0aec0;
+        margin-bottom: 1rem;
+        transition: color 0.3s;
+    }
+
+    .upload-drop-zone:hover .upload-icon {
+        color: #3498db;
+    }
+
+    /* 迷你统计卡片 */
+    .mini-stat-card {
+        border-left: 4px solid transparent;
+        transition: transform 0.2s;
+    }
+    .mini-stat-card:hover {
+        transform: translateY(-3px);
+    }
+    .mini-stat-card.border-primary { border-left-color: #3498db !important; }
+    .mini-stat-card.border-success { border-left-color: #27ae60 !important; }
+    .mini-stat-card.border-warning { border-left-color: #f39c12 !important; }
+    .mini-stat-card.border-danger { border-left-color: #e74c3c !important; }
+
+    /* 表格样式优化 */
+    .table thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+        color: #718096;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        padding: 12px 16px;
+    }
+    
+    .table tbody td {
+        padding: 12px 16px;
+        vertical-align: middle;
+        color: #4a5568;
+    }
+
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .status-badge::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 6px;
+        background-color: currentColor;
+    }
+
+    .status-normal { background-color: #def7ec; color: #03543f; }
+    .status-weak { background-color: #fef3c7; color: #92400e; }
+    .status-critical { background-color: #fde8e8; color: #9b1c1c; }
+
+    /* Loading 遮罩层 */
+    #loadingOverlay {
+        backdrop-filter: blur(5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-dark"><i class="fas fa-database me-2 text-primary"></i>数据管理</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+            <i class="fas fa-sync-alt me-1"></i> 刷新列表
+        </button>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card mini-stat-card border-primary h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">总记录数</div>
+                <div class="fs-3 fw-bold text-dark mt-1">{{ total_trees }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mini-stat-card border-success h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">生长正常</div>
+                <div class="fs-3 fw-bold text-success mt-1">{{ growth_stats.normal }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mini-stat-card border-warning h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">生长衰弱</div>
+                <div class="fs-3 fw-bold text-warning mt-1">{{ growth_stats.weak }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mini-stat-card border-danger h-100">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase fw-bold">濒危状态</div>
+                <div class="fs-3 fw-bold text-danger mt-1">{{ growth_stats.critical }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-7 mb-4 mb-lg-0">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0"><i class="fas fa-cloud-upload-alt me-2 text-primary"></i>数据操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="upload-drop-zone mb-4" id="uploadArea">
+                    <i class="fas fa-file-import upload-icon"></i>
+                    <h5 class="fw-bold">点击或拖拽文件至此上传</h5>
+                    <p class="text-muted mb-3">支持 Excel (.xlsx, .xls) 和 CSV 格式数据导入</p>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                    <button class="btn btn-primary px-4 rounded-pill" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-folder-open me-2"></i>选择文件
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted fw-bold">数据导出：</span>
+                    <div>
+                        <button class="btn btn-outline-success me-2" onclick="exportData('xlsx')">
+                            <i class="fas fa-file-excel me-2"></i>导出 Excel
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportData('csv')">
+                            <i class="fas fa-file-csv me-2"></i>导出 CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie me-2 text-success"></i>数据分布预览</h5>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div style="height: 250px; width: 100%;">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="card-title mb-0"><i class="fas fa-table me-2 text-secondary"></i>最新监测记录</h5>
+        
+        <div class="input-group" style="width: 250px;">
+            <input type="text" class="form-control form-control-sm" placeholder="搜索编号或区域...">
+            <button class="btn btn-outline-secondary btn-sm"><i class="fas fa-search"></i></button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>监测区域</th>
+                    <th>树龄</th>
+                    <th>胸围</th>
+                    <th>树高</th>
+                    <th>年固碳量</th>
+                    <th>生长状态</th>
+                    <th class="text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tree in recent_trees %}
+                <tr>
+                    <td class="fw-bold text-muted">#{{ tree.id }}</td>
+                    <td>{{ tree.region }}</td>
+                    <td>{{ tree.tree_age }} 年</td>
+                    <td>{{ tree.dbh }} cm</td>
+                    <td>{{ tree.tree_height }} m</td>
+                    <td>{{ tree.annual_carbon_seq }} kg</td>
+                    <td>
+                        <span class="status-badge 
+                            {% if tree.growth_status == '正常' %}status-normal
+                            {% elif tree.growth_status == '衰弱' %}status-weak
+                            {% else %}status-critical{% endif %}">
+                            {{ tree.growth_status }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-light text-primary me-1" onclick="viewDetail({{ tree.id }})" title="查看详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-light text-danger" onclick="deleteData({{ tree.id }})" title="删除数据">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white py-3">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-end mb-0 pagination-sm">
+                <li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item"><a class="page-link" href="#">下一页</a></li>
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 初始化图表
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '衰弱', '濒危'],
+                datasets: [{
+                    data: [
+                        {{ growth_stats.normal }}, 
+                        {{ growth_stats.weak }}, 
+                        {{ growth_stats.critical }}
+                    ],
+                    backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { boxWidth: 15 }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+        
+        // 初始化文件上传交互
+        initializeFileUpload();
+    });
+
+    // 文件上传功能实现 (保持逻辑不变，适配新UI)
+    function initializeFileUpload() {
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) handleFileUpload(file);
+        });
+        
+        // 拖放事件
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', () => uploadArea.classList.add('drag-over'));
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('drag-over'));
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFileUpload(files[0]);
+        });
+    }
+
+    // 保留原有的处理逻辑函数
+    async function handleFileUpload(file) {
+        const allowedTypes = ['.xlsx', '.xls', '.csv'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExtension)) {
+            showAlert('请选择Excel或CSV格式的文件！', 'error');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+            showAlert('文件大小不能超过10MB！', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        showLoading('正在上传并解析数据...');
+        
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            hideLoading();
+            
+            if (data.success) {
+                showAlert(`成功导入 ${data.imported_count} 条数据！`, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('导入失败: ' + data.message, 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('上传错误:', error);
+            showAlert('上传失败: ' + error.message, 'error');
+        }
+    }
+
+    async function exportData(format) {
+        try {
+            showLoading('正在生成导出文件...');
+            const response = await fetch(`/api/export/trees?format=${format}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                a.download = `樟树数据_${timestamp}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                hideLoading();
+                showAlert('数据导出成功！', 'success');
+            } else {
+                throw new Error('导出失败');
+            }
+        } catch (error) {
+            hideLoading();
+            showAlert('导出失败: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteData(id) {
+        if (!confirm('确定要删除这条数据吗？此操作不可撤销！')) return;
+        
+        try {
+            showLoading('正在删除数据...');
+            const response = await fetch(`/api/trees/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+            hideLoading();
+            if (result.success) {
+                showAlert('数据删除成功！', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('删除失败: ' + result.message, 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            showAlert('删除失败: ' + error.message, 'error');
+        }
+    }
+
+    // 详情查看占位
+    function viewDetail(id) {
+        window.location.href = `/tree_detail/${id}`;
+    }
+
+    // UI 工具函数 (Loading & Alert)
+    function showLoading(message = '处理中...') {
+        let loadingDiv = document.getElementById('loadingOverlay');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loadingOverlay';
+            loadingDiv.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(255,255,255,0.7); display: flex;
+                justify-content: center; align-items: center; z-index: 9999;
+            `;
+            loadingDiv.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 fw-bold text-primary">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(loadingDiv);
+        }
+    }
+
+    function hideLoading() {
+        const loadingDiv = document.getElementById('loadingOverlay');
+        if (loadingDiv) loadingDiv.remove();
+    }
+
+    function showAlert(message, type = 'info') {
+        // 使用 base.html 中已有的 Toast 容器，或者如果没有则创建
+        let container = document.querySelector('.toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.cssText = 'z-index: 1050; margin-top: 60px;';
+            document.body.appendChild(container);
+        }
+        
+        const toastHtml = `
+            <div class="toast show align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0 shadow" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+        
+        // 插入 Toast 并自动清理
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = toastHtml;
+        const toastElement = tempDiv.firstElementChild;
+        container.appendChild(toastElement);
+        
+        setTimeout(() => {
+            const toast = new bootstrap.Toast(toastElement);
+            toast.hide();
+            setTimeout(() => toastElement.remove(), 500); // Wait for transition
+        }, 3000);
+    }
+</script>
+{% endblock %}
