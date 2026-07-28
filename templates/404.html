@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页面未找到 - 融合机器学习的华南樟树生态因子关联解析与碳汇功能预测系统V1.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --success: #27ae60;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
+            font-family: 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 3rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error-code {
+            font-size: 10rem;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(45deg, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            margin-bottom: 1rem;
+            text-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .error-icon {
+            font-size: 8rem;
+            color: var(--success);
+            opacity: 0.2;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .error-title {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+
+        .error-message {
+            color: #6c757d;
+            font-size: 1.1rem;
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-home {
+            background: var(--primary);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(44, 62, 80, 0.3);
+        }
+
+        .btn-home:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(44, 62, 80, 0.4);
+            background: #34495e;
+            color: white;
+        }
+
+        .btn-back {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 28px;
+            border-radius: 50px;
+            font-size: 1rem;
+            margin-right: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: rgba(44, 62, 80, 0.1);
+            color: var(--primary);
+        }
+
+        /* 装饰性背景圆圈 */
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(39, 174, 96, 0.05);
+            z-index: 0;
+        }
+
+        .circle-1 { width: 300px; height: 300px; top: -100px; left: -100px; }
+        .circle-2 { width: 200px; height: 200px; bottom: 50px; right: -50px; background: rgba(52, 152, 219, 0.05); }
+        .circle-3 { width: 100px; height: 100px; top: 20%; right: 20%; background: rgba(241, 196, 15, 0.1); }
+
+        @keyframes float {
+            0% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-20px); }
+            100% { transform: translate(-50%, -50%) translateY(0px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-circle circle-1"></div>
+    <div class="bg-circle circle-2"></div>
+    <div class="bg-circle circle-3"></div>
+
+    <div class="container">
+        <div class="error-container">
+            <i class="fas fa-tree error-icon"></i>
+
+            <div class="error-code">404</div>
+
+            <h2 class="error-title">仿佛迷失在森林中...</h2>
+            <p class="error-message">
+                抱歉，您访问的页面似乎是一棵不存在的树。<br>
+                它可能已经被移除，或者您输入的链接有误。
+            </p>
+
+            <div class="d-flex justify-content-center">
+                <button onclick="history.back()" class="btn btn-back">
+                    <i class="fas fa-arrow-left me-2"></i>返回上一页
+                </button>
+                <a href="/dashboard" class="btn btn-home text-white">
+                    <i class="fas fa-tachometer-alt me-2"></i>返回仪表盘
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
